@@ -23,10 +23,14 @@ async function main() {
     const collUsers = database.collection('users')
 
 
-    app.get('/', (req, res) => {
-      res.send('Welcome')
-    })
+    app.get('/', (req, res) => {res.send('Welcome')})
     
+    app.post('/create-user', async (req, res) => {
+      const {email, displayName} = req.body
+      const newUser = {email, displayName, badge: 'bronze', rank: 'user'}
+      const result = await collUsers.insertOne(newUser)
+      res.send(result)
+    })
     // stripe element payment
     app.post('/create-payment-intent', async (req, res) => {
       const {price} = req.body 
