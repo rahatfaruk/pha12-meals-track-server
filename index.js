@@ -23,6 +23,7 @@ async function main() {
     const collUsers = database.collection('users')
     const collMeals = database.collection('meals')
     const collReviews = database.collection('reviews')
+    const collRequestedMeals = database.collection('requested-meals')
 
 
     app.get('/', (req, res) => {res.send('Welcome')})
@@ -51,12 +52,30 @@ async function main() {
       const reviews = await collReviews.find(query).toArray()
       res.send(reviews)
     })
+    // > get user from db
+    app.get('/users/:email', async (req, res) => {
+      const query = {email: req.params.email}
+      const user = await collUsers.findOne(query)
+      res.send(user)
+    })
     
     // > create new user in db
     app.post('/create-user', async (req, res) => {
       const {email, displayName} = req.body
       const newUser = {email, displayName, badge: 'bronze', rank: 'user'}
       const result = await collUsers.insertOne(newUser)
+      res.send(result)
+    })
+    // > add new review in reviews
+    app.post('/add-review', async (req, res) => {
+      const review = req.body
+      const result = await collReviews.insertOne(review)
+      res.send(result)
+    })
+    // > add-requested-meal in req-meals collection
+    app.post('/add-requested-meal', async (req, res) => {
+      const requestedMeal = req.body
+      const result = await collRequestedMeals.insertOne(requestedMeal)
       res.send(result)
     })
     // > stripe element payment
@@ -71,6 +90,13 @@ async function main() {
       })
     
       res.send({clientSecret: paymentIntent.client_secret})
+    })
+    // increment meal-like-count
+    app.patch('/inc-meal-like', async (req, res) => {
+      const filter = { _id: new ObjectId(`${req.body.meal_id}`)}
+      const updateDoc = { $inc: {likes: 1} }
+      const result = await collMeals.updateOne(filter, updateDoc)
+      res.send(result)
     })
 
     // check connection
