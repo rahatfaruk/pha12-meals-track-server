@@ -69,6 +69,25 @@ async function main() {
       const user = await collUsers.findOne(query)
       res.send(user)
     })
+    // ### user Dashboard
+    // > reviews-with-meals
+    app.get('/reviews-with-meals/:email', async (req, res) => {
+      const query = {reviewer_email: req.params.email}
+      // get reviews based on email
+      const reviews = await collReviews.find(query).toArray()
+      // create array of meal ids; get all meals
+      const mealIds = reviews.map(review => new ObjectId(`${review.meal_id}`))
+      const mealsQuery = { _id: { $in: mealIds } }
+      const mealsOpt = { projection: {_id: 1, title: 1, likes: 1} }
+      const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
+      // make an array where each review also contains correspond meal 
+      let customReviews = reviews.map(review => {
+        const targetMeal = meals.find(meal => meal._id.toString() === review.meal_id)
+        return {...review, title: targetMeal.title, likes: targetMeal.likes}
+      })
+
+      res.send(customReviews)
+    })
     
     // > create new user in db
     app.post('/create-user', async (req, res) => {
