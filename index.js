@@ -24,6 +24,7 @@ async function main() {
     const collMeals = database.collection('meals')
     const collReviews = database.collection('reviews')
     const collRequestedMeals = database.collection('requested-meals')
+    const collUpcomingMeals = database.collection('upcoming-meals')
 
 
     app.get('/', (req, res) => {res.send('Welcome')})
@@ -39,6 +40,16 @@ async function main() {
       const meals3 = await collMeals.find({category: 'dinner'}, options).toArray()
 
       res.send( [...meals1, ...meals2, ...meals3] )
+    })
+    // > all meals
+    app.get('/meals', async (req, res) => {
+      const meals = await collMeals.find().toArray()
+      res.send( meals )
+    })
+    // > all upcoming meals
+    app.get('/upcoming-meals', async (req, res) => {
+      const meals = await collUpcomingMeals.find().toArray()
+      res.send( meals )
     })
     // > meal details by id
     app.get('/meals/:id', async (req, res) => {
@@ -96,6 +107,13 @@ async function main() {
       const filter = { _id: new ObjectId(`${req.body.meal_id}`)}
       const updateDoc = { $inc: {likes: 1} }
       const result = await collMeals.updateOne(filter, updateDoc)
+      res.send(result)
+    })
+    // increment upcoming-meal-like-count
+    app.patch('/inc-upcoming-meal-like', async (req, res) => {
+      const filter = { _id: new ObjectId(`${req.body.meal_id}`)}
+      const updateDoc = { $inc: {likes: 1} }
+      const result = await collUpcomingMeals.updateOne(filter, updateDoc)
       res.send(result)
     })
 
