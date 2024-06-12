@@ -70,23 +70,31 @@ async function main() {
       res.send(user)
     })
     // ### user Dashboard
-    // > reviews-with-meals
+    // > udb: reviews-with-meals
     app.get('/reviews-with-meals/:email', async (req, res) => {
       const query = {reviewer_email: req.params.email}
       // get reviews based on email
       const reviews = await collReviews.find(query).toArray()
-      // create array of meal ids; get all meals
+      // create array of meal ids; get meals (review id matched)
       const mealIds = reviews.map(review => new ObjectId(`${review.meal_id}`))
       const mealsQuery = { _id: { $in: mealIds } }
       const mealsOpt = { projection: {_id: 1, title: 1, likes: 1} }
       const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
-      // make an array where each review also contains correspond meal 
-      let customReviews = reviews.map(review => {
-        const targetMeal = meals.find(meal => meal._id.toString() === review.meal_id)
-        return {...review, title: targetMeal.title, likes: targetMeal.likes}
-      })
+  
+      res.send({meals, reviews})
+    })
+    // > udb: my-requested-meals
+    app.get('/my-requested-meals/:email', async (req, res) => {
+      const query = {email: req.params.email}
+      // get reviews based on email
+      const myReqMeals = await collRequestedMeals.find(query).toArray()
+      // create array of meal ids; get meals (review id matched)
+      const mealIds = myReqMeals.map(reqMeal => new ObjectId(`${reqMeal.meal_id}`))
+      const mealsQuery = { _id: { $in: mealIds } }
+      const mealsOpt = { projection: {_id: 1, title: 1, likes: 1, reviews_count:1} }
+      const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
 
-      res.send(customReviews)
+      res.send({meals, myReqMeals})
     })
     
     // > create new user in db
