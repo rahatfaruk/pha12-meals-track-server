@@ -25,6 +25,8 @@ async function main() {
     const collReviews = database.collection('reviews')
     const collRequestedMeals = database.collection('requested-meals')
     const collUpcomingMeals = database.collection('upcoming-meals')
+    const collPricingPlan = database.collection('pricing-plan')
+    const collPayments = database.collection('payments')
 
 
     app.get('/', (req, res) => {res.send('Welcome')})
@@ -45,6 +47,17 @@ async function main() {
     app.get('/meals', async (req, res) => {
       const meals = await collMeals.find().toArray()
       res.send( meals )
+    })
+    // > pricing plan
+    app.get('/pricing-plan', async (req, res) => {
+      const badge = req.query.badge
+      if (badge) {
+        const pricingPlan = await collPricingPlan.findOne({name:badge})
+        res.send( pricingPlan )
+      } else {
+        const pricingPlan = await collPricingPlan.find().toArray()
+        res.send( pricingPlan )
+      }
     })
     // > all upcoming meals
     app.get('/upcoming-meals', async (req, res) => {
@@ -68,6 +81,13 @@ async function main() {
       const query = {email: req.params.email}
       const user = await collUsers.findOne(query)
       res.send(user)
+    })
+    // > udb: my-requested-meals
+    app.get('/requested-meals/:email', async (req, res) => {
+      const query = {email: req.params.email}
+      // get reviews based on email
+      const myReqMeals = await collRequestedMeals.find(query).toArray()
+      res.send(myReqMeals)
     })
     // ### user Dashboard
     // > udb: reviews-with-meals
@@ -116,6 +136,12 @@ async function main() {
       const result = await collRequestedMeals.insertOne(requestedMeal)
       res.send(result)
     })
+    // > store-payment-info 
+    app.post('/store-payment-info', async (req, res) => {
+      const paymentInfo = req.body
+      const result = await collPayments.insertOne(paymentInfo)
+      res.send(result)
+    })
     // > stripe element payment
     app.post('/create-payment-intent', async (req, res) => {
       const {price} = req.body 
@@ -141,6 +167,13 @@ async function main() {
       const filter = { _id: new ObjectId(`${req.body.meal_id}`)}
       const updateDoc = { $inc: {likes: 1} }
       const result = await collUpcomingMeals.updateOne(filter, updateDoc)
+      res.send(result)
+    })
+    // > update user in db
+    app.patch('/update-user', async (req, res) => {
+      const filter = {email: req.query.email}
+      const updateDoc = { $set: {badge: req.body.badge} }
+      const result = await collUsers.updateOne(filter, updateDoc)
       res.send(result)
     })
 
