@@ -82,6 +82,7 @@ async function main() {
       const user = await collUsers.findOne(query)
       res.send(user)
     })
+    // ### user Dashboard
     // > udb: my-requested-meals
     app.get('/requested-meals/:email', async (req, res) => {
       const query = {email: req.params.email}
@@ -89,7 +90,6 @@ async function main() {
       const myReqMeals = await collRequestedMeals.find(query).toArray()
       res.send(myReqMeals)
     })
-    // ### user Dashboard
     // > udb: reviews-with-meals
     app.get('/reviews-with-meals/:email', async (req, res) => {
       const query = {reviewer_email: req.params.email}
@@ -115,6 +115,13 @@ async function main() {
       const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
 
       res.send({meals, myReqMeals})
+    })
+    // > udb: my-payments
+    app.get('/my-payments/:email', async (req, res) => {
+      const query = {email: req.params.email}
+      // get reviews based on email
+      const payments = await collPayments.find(query).toArray()
+      res.send(payments)
     })
     
     // > create new user in db
@@ -175,6 +182,26 @@ async function main() {
       const updateDoc = { $set: {badge: req.body.badge} }
       const result = await collUsers.updateOne(filter, updateDoc)
       res.send(result)
+    })
+    // > update /update-review/${review._id}
+    app.patch('/update-review/:id', async (req, res) => {
+      const filter = {_id: new ObjectId(req.params.id)}
+      const updateDoc = { $set: req.body }
+      const result = await collReviews.updateOne(filter, updateDoc)
+      res.send(result)
+    })
+
+    // > udb: delete-requested-meal
+    app.delete('/delete-requested-meal/:id', async (req, res) => {
+      const filter = {_id: new ObjectId(req.params.id)}
+      const result = await collRequestedMeals.deleteOne(filter)
+      res.send(result) 
+    })
+    // > udb: delete-review
+    app.delete('/delete-review/:id', async (req, res) => {
+      const filter = {_id: new ObjectId(req.params.id)}
+      const result = await collReviews.deleteOne(filter)
+      res.send(result) 
     })
 
     // check connection
