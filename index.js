@@ -134,6 +134,21 @@ async function main() {
       const user = await collUsers.find().toArray()
       res.send(user)
     })
+    // > adb: get all meals from db
+    app.get('/all-meals', async (req, res) => {
+      const meals = await collMeals.find().toArray()
+      res.send(meals)
+    })
+    // > adb: get all reviews from db
+    app.get('/all-reviews', async (req, res) => {
+      const reviews = await collReviews.find().toArray()
+      // get meals based on review meal_id
+      const mealIds = reviews.map(review => new ObjectId(review.meal_id))
+      const mQuery = { _id: {$in: mealIds} }
+      const mOptions = {projection: { title:1, likes:1, reviews_count:1} }
+      const meals = await collMeals.find(mQuery, mOptions ).toArray()
+      res.send({reviews, meals})
+    })
     
     // > create new user in db
     app.post('/create-user', async (req, res) => {
@@ -223,10 +238,21 @@ async function main() {
       const result = await collRequestedMeals.deleteOne(filter)
       res.send(result) 
     })
-    // > udb: delete-review
+    // > user, admin:: delete-review
     app.delete('/delete-review/:id', async (req, res) => {
       const filter = {_id: new ObjectId(req.params.id)}
       const result = await collReviews.deleteOne(filter)
+      res.send(result) 
+    })
+    // > admin: delete-meal
+    app.delete('/delete-meal/:id', async (req, res) => {
+      const mealId = req.params.id
+      // delete meal
+      const filterMeal = {_id: new ObjectId(mealId)}
+      const result = await collMeals.deleteOne(filterMeal)
+      // delete reviews
+      const filterReviews = {meal_id: mealId}
+      await collReviews.deleteMany(filterReviews)
       res.send(result) 
     })
 
