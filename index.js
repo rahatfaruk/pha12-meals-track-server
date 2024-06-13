@@ -123,6 +123,17 @@ async function main() {
       const payments = await collPayments.find(query).toArray()
       res.send(payments)
     })
+    // > adb: my-requested-meals-count
+    app.get('/my-meals-count/:email', async (req, res) => {
+      const query = {admin_email: req.params.email}
+      const count = await collMeals.countDocuments(query)
+      res.send({count})
+    })
+    // > adb: get all users from db
+    app.get('/all-users', async (req, res) => {
+      const user = await collUsers.find().toArray()
+      res.send(user)
+    })
     
     // > create new user in db
     app.post('/create-user', async (req, res) => {
@@ -162,6 +173,14 @@ async function main() {
     
       res.send({clientSecret: paymentIntent.client_secret})
     })
+    // > adb: add-meal 
+    app.post('/add-meal', async (req, res) => {
+      const newMeal = req.body
+      const result = await collMeals.insertOne(newMeal)
+      res.send(result)
+    })
+
+
     // increment meal-like-count
     app.patch('/inc-meal-like', async (req, res) => {
       const filter = { _id: new ObjectId(`${req.body.meal_id}`)}
@@ -183,11 +202,18 @@ async function main() {
       const result = await collUsers.updateOne(filter, updateDoc)
       res.send(result)
     })
-    // > update /update-review/${review._id}
+    // > update /update-review
     app.patch('/update-review/:id', async (req, res) => {
       const filter = {_id: new ObjectId(req.params.id)}
       const updateDoc = { $set: req.body }
       const result = await collReviews.updateOne(filter, updateDoc)
+      res.send(result)
+    })
+    // > adb: make the user as admin
+    app.patch('/make-admin/:id', async (req, res) => {
+      const filter = {_id: new ObjectId(req.params.id)}
+      const updateDoc = { $set: {rank: 'admin'} }
+      const result = await collUsers.updateOne(filter, updateDoc)
       res.send(result)
     })
 
