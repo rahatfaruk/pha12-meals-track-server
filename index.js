@@ -149,6 +149,27 @@ async function main() {
       const meals = await collMeals.find(mQuery, mOptions ).toArray()
       res.send({reviews, meals})
     })
+    // > admin: all-requested-meals / serve meals
+    app.get('/serve-meals', async (req, res) => {
+      const reqMeals = await collRequestedMeals.find().toArray()
+      // get meals (based on review's meal_id)
+      const mealIds = reqMeals.map(reqMeal => new ObjectId(`${reqMeal.meal_id}`))
+      const mealsQuery = { _id: { $in: mealIds } }
+      const mealsOpt = { projection: { title: 1 } }
+      const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
+      // get users (based on review's email)
+      const emails = reqMeals.map(reqMeal => reqMeal.email)
+      const usersQuery = { email: { $in: emails } }
+      const usersOpt = { projection: { displayName:1, email:1 } }
+      const users = await collUsers.find(usersQuery, usersOpt).toArray()
+
+      res.send({reqMeals, meals, users})
+    })
+    // > admin: /all-upcoming-meals :: sorted by likes (descending)
+    app.get('/all-upcoming-meals', async (req, res) => {
+      const upcomingMeals = await collUpcomingMeals.find({}, {sort: {likes:-1}}).toArray()
+      res.send(upcomingMeals)
+    })
     
     // > create new user in db
     app.post('/create-user', async (req, res) => {
@@ -194,6 +215,12 @@ async function main() {
       const result = await collMeals.insertOne(newMeal)
       res.send(result)
     })
+    // > adb: add-upcoming-meal 
+    app.post('/add-upcoming-meal', async (req, res) => {
+      const newMeal = req.body
+      const result = await collUpcomingMeals.insertOne(newMeal)
+      res.send(result)
+    })
 
 
     // increment meal-like-count
@@ -231,6 +258,13 @@ async function main() {
       const result = await collUsers.updateOne(filter, updateDoc)
       res.send(result)
     })
+    // > adb: update serve (requested) meal
+    app.patch('/update-serve-meal/:reqMealId', async (req, res) => {
+      const filter = {_id: new ObjectId(req.params.reqMealId)}
+      const updateDoc = { $set: {status: 'delivered'} }
+      const result = await collRequestedMeals.updateOne(filter, updateDoc)
+      res.send(result)
+    })
 
     // > udb: delete-requested-meal
     app.delete('/delete-requested-meal/:id', async (req, res) => {
@@ -253,6 +287,12 @@ async function main() {
       // delete reviews
       const filterReviews = {meal_id: mealId}
       await collReviews.deleteMany(filterReviews)
+      res.send(result) 
+    })
+    // > admin: publish-upcoming-meal 
+    app.delete('/delete-upcoming-meal/:id', async (req, res) => {
+      const query = {_id: new ObjectId(req.params.id)}
+      const result = await collUpcomingMeals.deleteOne(query)
       res.send(result) 
     })
 
