@@ -28,7 +28,6 @@ async function main() {
     const collPricingPlan = database.collection('pricing-plan')
     const collPayments = database.collection('payments')
 
-
     app.get('/', (req, res) => {res.send('Welcome')})
 
     // > homepage meals
@@ -45,7 +44,23 @@ async function main() {
     })
     // > all meals
     app.get('/meals', async (req, res) => {
-      const meals = await collMeals.find().toArray()
+      const searchText = req.query.searchText
+      let modifiedQuery = {}
+
+      // update query by searchText 
+      if(searchText) {
+        // modifiedQuery = { title: { $regex: new RegExp(searchText, 'gi') } }
+        modifiedQuery.title = { $regex: new RegExp(searchText, 'gi') }
+      }
+      if (req.query.category) {
+        modifiedQuery.category = req.query.category
+      }
+      if (req.query.priceMin && req.query.priceMax) {
+        // range of price
+        modifiedQuery.price = { $gte: +req.query.priceMin, $lte: +req.query.priceMax }
+      }
+
+      const meals = await collMeals.find(modifiedQuery).toArray()
       res.send( meals )
     })
     // > pricing plan
