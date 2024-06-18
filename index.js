@@ -146,7 +146,16 @@ async function main() {
     })
     // > adb: get all users from db
     app.get('/all-users', async (req, res) => {
-      const user = await collUsers.find().toArray()
+      const {email, username} = req.query;
+      const myQuery = {}
+      if (email) {
+        myQuery.email = {$regex: new RegExp(email, 'i') }
+      }
+      if (username) {
+        myQuery.displayName = {$regex: new RegExp(username, 'i') }
+      }
+
+      const user = await collUsers.find(myQuery).toArray()
       res.send(user)
     })
     // > adb: get all meals from db
@@ -166,19 +175,23 @@ async function main() {
     })
     // > admin: all-requested-meals / serve meals
     app.get('/serve-meals', async (req, res) => {
-      const reqMeals = await collRequestedMeals.find().toArray()
+      const {email, username} = req.query;
+      const myQuery = {}
+      if (email) {
+        myQuery.email = {$regex: new RegExp(email, 'i') }
+      }
+      if (username) {
+        myQuery.displayName = {$regex: new RegExp(username, 'i') }
+      }
+
+      const reqMeals = await collRequestedMeals.find(myQuery).toArray()
       // get meals (based on review's meal_id)
       const mealIds = reqMeals.map(reqMeal => new ObjectId(`${reqMeal.meal_id}`))
       const mealsQuery = { _id: { $in: mealIds } }
       const mealsOpt = { projection: { title: 1 } }
       const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
-      // get users (based on review's email)
-      const emails = reqMeals.map(reqMeal => reqMeal.email)
-      const usersQuery = { email: { $in: emails } }
-      const usersOpt = { projection: { displayName:1, email:1 } }
-      const users = await collUsers.find(usersQuery, usersOpt).toArray()
 
-      res.send({reqMeals, meals, users})
+      res.send({reqMeals, meals})
     })
     // > admin: /all-upcoming-meals :: sorted by likes (descending)
     app.get('/all-upcoming-meals', async (req, res) => {
