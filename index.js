@@ -18,7 +18,6 @@ app.use(express.json())
 
 // custom middleware fnc
 async function verifyUser(req, res, next) {
-  const email = req.query.email
   const token = req.headers.authorization?.split(' ')[1]
 
   // if token is not available, return error response
@@ -36,6 +35,7 @@ async function verifyUser(req, res, next) {
   }
 }
 
+
 // all api
 async function main() {
   try {
@@ -49,6 +49,18 @@ async function main() {
     const collUpcomingMeals = database.collection('upcoming-meals')
     const collPricingPlan = database.collection('pricing-plan')
     const collPayments = database.collection('payments')
+
+    async function verifyAdmin(req, res, next) {
+      // access email from verifyUser (middleware)
+      const email = req.decoded.email 
+      const user = await collUsers.findOne({email})
+
+      if (user?.rank === 'admin') {
+        next()
+      } else {
+        return res.status(403).send({message:'Forbidden access!!'})
+      }
+    }
 
     app.get('/', (req, res) => {res.send('Welcome')})
 
@@ -114,10 +126,7 @@ async function main() {
       res.send(reviews)
     })
     // > get user from db
-    app.get('/users/:email', verifyUser, async (req, res) => {
-      if (req.decoded.email !== req.params.email) {
-        return res.status(403).send({message: 'forbidden access'})
-      }
+    app.get('/users/:email', async (req, res) => {
       const query = {email: req.params.email}
       const user = await collUsers.findOne(query)
       res.send(user)
@@ -173,13 +182,19 @@ async function main() {
       res.send(payments)
     })
     // > adb: my-requested-meals-count
-    app.get('/my-meals-count/:email', async (req, res) => {
+    app.get('/my-meals-count/:email', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.params.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const query = {admin_email: req.params.email}
       const count = await collMeals.countDocuments(query)
       res.send({count})
     })
     // > adb: get all users from db
-    app.get('/all-users', async (req, res) => {
+    app.get('/all-users', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.userEmail) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const {email, username} = req.query;
       const myQuery = {}
       if (email) {
@@ -198,7 +213,11 @@ async function main() {
       res.send(meals)
     })
     // > adb: get all reviews from db
-    app.get('/all-reviews', async (req, res) => {
+    app.get('/all-reviews', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
+
       const reviews = await collReviews.find().toArray()
       // get meals based on review meal_id
       const mealIds = reviews.map(review => new ObjectId(review.meal_id))
@@ -208,7 +227,10 @@ async function main() {
       res.send({reviews, meals})
     })
     // > admin: all-requested-meals / serve meals
-    app.get('/serve-meals', async (req, res) => {
+    app.get('/serve-meals', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.userEmail) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const {email, username} = req.query;
       const myQuery = {}
       if (email) {
@@ -283,13 +305,19 @@ async function main() {
       res.send({clientSecret: paymentIntent.client_secret})
     })
     // > adb: add-meal 
-    app.post('/add-meal', async (req, res) => {
+    app.post('/add-meal', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const newMeal = req.body
       const result = await collMeals.insertOne(newMeal)
       res.send(result)
     })
     // > adb: add-upcoming-meal 
-    app.post('/add-upcoming-meal', async (req, res) => {
+    app.post('/add-upcoming-meal', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const newMeal = req.body
       const result = await collUpcomingMeals.insertOne(newMeal)
       res.send(result)
