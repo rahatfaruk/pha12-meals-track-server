@@ -114,7 +114,10 @@ async function main() {
       res.send(reviews)
     })
     // > get user from db
-    app.get('/users/:email', async (req, res) => {
+    app.get('/users/:email', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.params.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const query = {email: req.params.email}
       const user = await collUsers.findOne(query)
       res.send(user)
@@ -128,7 +131,10 @@ async function main() {
       res.send(myReqMeals)
     })
     // > udb: reviews-with-meals
-    app.get('/reviews-with-meals/:email', async (req, res) => {
+    app.get('/my-reviews/:email', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.params.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const query = {reviewer_email: req.params.email}
       // get reviews based on email
       const reviews = await collReviews.find(query).toArray()
@@ -141,7 +147,10 @@ async function main() {
       res.send({meals, reviews})
     })
     // > udb: my-requested-meals
-    app.get('/my-requested-meals/:email', async (req, res) => {
+    app.get('/my-requested-meals/:email', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.params.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const query = {email: req.params.email}
       // get reviews based on email
       const myReqMeals = await collRequestedMeals.find(query).toArray()
@@ -154,7 +163,10 @@ async function main() {
       res.send({meals, myReqMeals})
     })
     // > udb: my-payments
-    app.get('/my-payments/:email', async (req, res) => {
+    app.get('/my-payments/:email', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.params.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const query = {email: req.params.email}
       // get reviews based on email
       const payments = await collPayments.find(query).toArray()
@@ -243,7 +255,10 @@ async function main() {
       res.send(result)
     })
     // > add-requested-meal in req-meals collection
-    app.post('/add-requested-meal', async (req, res) => {
+    app.post('/add-requested-meal', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const requestedMeal = req.body
       const result = await collRequestedMeals.insertOne(requestedMeal)
       res.send(result)
@@ -292,7 +307,10 @@ async function main() {
       res.send(result)
     })
     // increment upcoming-meal-like-count
-    app.patch('/inc-upcoming-meal-like', async (req, res) => {
+    app.patch('/inc-upcoming-meal-like', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = { _id: new ObjectId(`${req.body.meal_id}`)}
       const updateDoc = { $inc: {likes: 1} }
       const result = await collUpcomingMeals.updateOne(filter, updateDoc)
