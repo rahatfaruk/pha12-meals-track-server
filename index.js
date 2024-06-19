@@ -1,4 +1,5 @@
 const express = require('express')
+const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const cors = require('cors')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
@@ -15,6 +16,27 @@ const client = new MongoClient(mongoUri, {
 app.use(cors())
 app.use(express.json())
 
+// custom middleware fnc
+async function verifyUser(req, res, next) {
+  const email = req.query.email
+  const token = req.headers.authorization?.split(' ')[1]
+
+  // if token is not available, return error response
+  if (!token) {
+    return res.status(401).send({message: 'Unauthorized'})
+  }
+
+  // verify user
+  try {
+    const decoded = jwt.verify(token, process.env.AuthPrivateKey)
+    req.decoded = decoded
+    next()
+  } catch (err) {
+    return res.status(401).send({message: 'Unauthorized'})
+  }
+}
+
+// all api
 async function main() {
   try {
     await client.connect()
@@ -198,6 +220,14 @@ async function main() {
       const upcomingMeals = await collUpcomingMeals.find({}, {sort: {likes:-1}}).toArray()
       res.send(upcomingMeals)
     })
+    // > security: generate jwt token
+    app.get('/generate-jwt', async (req, res) => {
+      const email = req.query.email
+      const privateKey = process.env.AuthPrivateKey
+      // generate token
+      const token = jwt.sign({email}, privateKey, {expiresIn: '3h'})
+      res.send(token)
+    })
     
     // > create new user in db
     app.post('/create-user', async (req, res) => {
@@ -252,7 +282,10 @@ async function main() {
 
 
     // increment meal-like-count
-    app.patch('/inc-meal-like', async (req, res) => {
+    app.patch('/inc-meal-like', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = { _id: new ObjectId(`${req.body.meal_id}`)}
       const updateDoc = { $inc: {likes: 1} }
       const result = await collMeals.updateOne(filter, updateDoc)
