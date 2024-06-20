@@ -13,7 +13,7 @@ const client = new MongoClient(mongoUri, {
 })
 
 // middleware
-app.use(cors())
+app.use(cors( {origin: ["http://localhost:5173", "https://pha12-mealtrack.web.app", "https://pha12-mealtrack.firebaseapp.com"]} ))
 app.use(express.json())
 
 // custom middleware fnc
@@ -39,7 +39,7 @@ async function verifyUser(req, res, next) {
 // all api
 async function main() {
   try {
-    await client.connect()
+    // await client.connect()
     const database = client.db('pha12')
     // collections
     const collUsers = database.collection('users')
@@ -127,9 +127,13 @@ async function main() {
     })
     // > get user from db
     app.get('/users/:email', async (req, res) => {
-      const query = {email: req.params.email}
-      const user = await collUsers.findOne(query)
-      res.send(user)
+      try {
+        const query = {email: req.params.email}
+        const user = await collUsers.findOne(query)
+        res.send(user)
+      } catch (error) {
+        res.send(null)
+      }
     })
     // ### user Dashboard
     // > udb: my-requested-meals
@@ -404,8 +408,8 @@ async function main() {
     })
 
     // check connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment")
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment")
     } catch (error) {
       console.log("Error in deployment", error?.message)
   }
