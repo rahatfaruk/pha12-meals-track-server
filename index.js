@@ -308,12 +308,14 @@ async function main() {
     
       res.send({clientSecret: paymentIntent.client_secret})
     })
-    // > adb: add-meal 
+    // > adb: add-meal (upcomingMeals to meals collection)
     app.post('/add-meal', verifyUser, verifyAdmin, async (req, res) => {
       if (req.decoded.email !== req.query.email) {
         return res.status(403).send({message: 'forbidden access'})
       }
-      const newMeal = req.body
+      const {_id:mealId, ...mealExceptId} = req.body
+      const _id = new ObjectId(`${mealId}`)
+      const newMeal = {_id, ...mealExceptId}
       const result = await collMeals.insertOne(newMeal)
       res.send(result)
     })
@@ -349,48 +351,69 @@ async function main() {
       res.send(result)
     })
     // > update user in db
-    app.patch('/update-user', async (req, res) => {
+    app.patch('/update-user', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = {email: req.query.email}
       const updateDoc = { $set: {badge: req.body.badge} }
       const result = await collUsers.updateOne(filter, updateDoc)
       res.send(result)
     })
-    // > update /update-review
-    app.patch('/update-review/:id', async (req, res) => {
+    // > user: update /update-review
+    app.patch('/update-review/:id', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = {_id: new ObjectId(req.params.id)}
       const updateDoc = { $set: req.body }
       const result = await collReviews.updateOne(filter, updateDoc)
       res.send(result)
     })
     // > adb: make the user as admin
-    app.patch('/make-admin/:id', async (req, res) => {
+    app.patch('/make-admin/:id', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = {_id: new ObjectId(req.params.id)}
       const updateDoc = { $set: {rank: 'admin'} }
       const result = await collUsers.updateOne(filter, updateDoc)
       res.send(result)
     })
     // > adb: update serve (requested) meal
-    app.patch('/update-serve-meal/:reqMealId', async (req, res) => {
+    app.patch('/update-serve-meal/:reqMealId', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = {_id: new ObjectId(req.params.reqMealId)}
       const updateDoc = { $set: {status: 'delivered'} }
       const result = await collRequestedMeals.updateOne(filter, updateDoc)
       res.send(result)
     })
 
-    // > udb: delete-requested-meal
-    app.delete('/delete-requested-meal/:id', async (req, res) => {
+    // > user: delete-requested-meal
+    app.delete('/delete-requested-meal/:id', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = {_id: new ObjectId(req.params.id)}
       const result = await collRequestedMeals.deleteOne(filter)
       res.send(result) 
     })
     // > user, admin:: delete-review
-    app.delete('/delete-review/:id', async (req, res) => {
+    app.delete('/delete-review/:id', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const filter = {_id: new ObjectId(req.params.id)}
       const result = await collReviews.deleteOne(filter)
       res.send(result) 
     })
     // > admin: delete-meal
-    app.delete('/delete-meal/:id', async (req, res) => {
+    app.delete('/delete-meal/:id', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const mealId = req.params.id
       // delete meal
       const filterMeal = {_id: new ObjectId(mealId)}
@@ -401,7 +424,10 @@ async function main() {
       res.send(result) 
     })
     // > admin: publish-upcoming-meal 
-    app.delete('/delete-upcoming-meal/:id', async (req, res) => {
+    app.delete('/delete-upcoming-meal/:id', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const query = {_id: new ObjectId(req.params.id)}
       const result = await collUpcomingMeals.deleteOne(query)
       res.send(result) 
