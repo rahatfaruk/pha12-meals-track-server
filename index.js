@@ -49,6 +49,7 @@ async function main() {
     const collUpcomingMeals = database.collection('upcoming-meals')
     const collPricingPlan = database.collection('pricing-plan')
     const collPayments = database.collection('payments')
+    const collLikes = database.collection('likes')
 
     async function verifyAdmin(req, res, next) {
       // access email from verifyUser (middleware)
@@ -113,6 +114,12 @@ async function main() {
       const meals = await collUpcomingMeals.find().toArray()
       res.send( meals )
     })
+    // > all upcoming meal
+    app.get('/upcoming-meals/:id', async (req, res) => {
+      const query = new ObjectId(req.params.id)
+      const meal = await collUpcomingMeals.findOne(query)
+      res.send( meal )
+    })
     // > meal details by id
     app.get('/meals/:id', async (req, res) => {
       const query = new ObjectId(req.params.id)
@@ -137,7 +144,10 @@ async function main() {
     })
     // ### user Dashboard
     // > udb: my-requested-meals
-    app.get('/requested-meals/:email', async (req, res) => {
+    app.get('/requested-meals/:email', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.params.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
       const query = {email: req.params.email}
       // get reviews based on email
       const myReqMeals = await collRequestedMeals.find(query).toArray()
@@ -289,6 +299,21 @@ async function main() {
       const result = await collRequestedMeals.insertOne(requestedMeal)
       res.send(result)
     })
+    // > user: add-user-like in likes collection
+    app.post('/add-user-like', verifyUser, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
+      const {email, meal_id} = req.body
+      // check if like is available inside likes; if not, then inset like into likes 
+      const existLike = await collLikes.findOne({email, meal_id})
+      if (!existLike) {
+        const result = await collLikes.insertOne(req.body)
+        return res.send(result)
+      } else {
+        res.send({message: 'already liked this meal', existLike: true})
+      }
+    })
     // > store-payment-info 
     app.post('/store-payment-info', async (req, res) => {
       const paymentInfo = req.body
@@ -308,8 +333,8 @@ async function main() {
     
       res.send({clientSecret: paymentIntent.client_secret})
     })
-    // > adb: add-meal (upcomingMeals to meals collection)
-    app.post('/add-meal', verifyUser, verifyAdmin, async (req, res) => {
+    // > user, admin: add-meal (upcomingMeals to meals collection)
+    app.post('/add-meal', verifyUser, async (req, res) => {
       if (req.decoded.email !== req.query.email) {
         return res.status(403).send({message: 'forbidden access'})
       }
@@ -423,8 +448,14 @@ async function main() {
       await collReviews.deleteMany(filterReviews)
       res.send(result) 
     })
-    // > admin: publish-upcoming-meal 
+    // > admin: delete-upcoming-meal (anyone's up-meal) 
     app.delete('/delete-upcoming-meal/:id', verifyUser, verifyAdmin, async (req, res) => {
+      const query = {_id: new ObjectId(req.params.id)}
+      const result = await collUpcomingMeals.deleteOne(query)
+      res.send(result) 
+    })
+    // > user: delete-my-upcoming-meal (anyone's up-meal) 
+    app.delete('/delete-my-upcoming-meal/:id', verifyUser, async (req, res) => {
       if (req.decoded.email !== req.query.email) {
         return res.status(403).send({message: 'forbidden access'})
       }
