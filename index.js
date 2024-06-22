@@ -245,8 +245,6 @@ async function main() {
     })
     // > adb: get all meals from db
     app.get('/all-meals', async (req, res) => {
-      // console.log('all-mel', req.query);
-      // const {currentPage, totalPages, itemsLimit} = req.query
       const currentPage = parseInt(req.query.currentPage) || 1
       const itemsLimit = parseInt(req.query.itemsLimit) || 10
       const itemsSkip = (currentPage - 1) * itemsLimit // prevPage * limit
