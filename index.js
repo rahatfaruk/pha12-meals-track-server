@@ -158,16 +158,21 @@ async function main() {
       if (req.decoded.email !== req.params.email) {
         return res.status(403).send({message: 'forbidden access'})
       }
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit
       const query = {reviewer_email: req.params.email}
       // get reviews based on email
-      const reviews = await collReviews.find(query).toArray()
+      const reviews = await collReviews.find(query, {limit:itemsLimit, skip:itemsSkip}).toArray()
+      const totalReviews = await collReviews.countDocuments(query)
+      const totalPages = Math.ceil(totalReviews/itemsLimit)
       // create array of meal ids; get meals (review id matched)
       const mealIds = reviews.map(review => new ObjectId(`${review.meal_id}`))
       const mealsQuery = { _id: { $in: mealIds } }
       const mealsOpt = { projection: {_id: 1, title: 1, likes: 1} }
       const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
   
-      res.send({meals, reviews})
+      res.send({meals, reviews, totalPages})
     })
     // > udb: my-requested-meals
     app.get('/my-requested-meals/:email', verifyUser, async (req, res) => {
@@ -175,15 +180,20 @@ async function main() {
         return res.status(403).send({message: 'forbidden access'})
       }
       const query = {email: req.params.email}
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit
       // get reviews based on email
-      const myReqMeals = await collRequestedMeals.find(query).toArray()
+      const myReqMeals = await collRequestedMeals.find(query, {limit:itemsLimit, skip:itemsSkip}).toArray()
+      const totalReqMeals = await collRequestedMeals.countDocuments(query)
+      const totalPages = Math.ceil(totalReqMeals/itemsLimit)
       // create array of meal ids; get meals (review id matched)
       const mealIds = myReqMeals.map(reqMeal => new ObjectId(`${reqMeal.meal_id}`))
       const mealsQuery = { _id: { $in: mealIds } }
       const mealsOpt = { projection: {_id: 1, title: 1, likes: 1, reviews_count:1} }
       const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
 
-      res.send({meals, myReqMeals})
+      res.send({meals, myReqMeals, totalPages})
     })
     // > udb: my-payments
     app.get('/my-payments/:email', verifyUser, async (req, res) => {
@@ -191,9 +201,15 @@ async function main() {
         return res.status(403).send({message: 'forbidden access'})
       }
       const query = {email: req.params.email}
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit
       // get reviews based on email
-      const payments = await collPayments.find(query).toArray()
-      res.send(payments)
+      const payments = await collPayments.find(query, {limit:itemsLimit, skip:itemsSkip}).toArray()
+      const totalPayments = await collPayments.countDocuments(query)
+      const totalPages = Math.ceil(totalPayments/itemsLimit)
+
+      res.send({payments, totalPages})
     })
     // > adb: my-requested-meals-count
     app.get('/my-meals-count/:email', verifyUser, async (req, res) => {
@@ -210,6 +226,10 @@ async function main() {
         return res.status(403).send({message: 'forbidden access'})
       }
       const {email, username} = req.query;
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit
+
       const myQuery = {}
       if (email) {
         myQuery.email = {$regex: new RegExp(email, 'i') }
@@ -218,13 +238,24 @@ async function main() {
         myQuery.displayName = {$regex: new RegExp(username, 'i') }
       }
 
-      const user = await collUsers.find(myQuery).toArray()
-      res.send(user)
+      const users = await collUsers.find(myQuery, {limit:itemsLimit, skip:itemsSkip}).toArray()
+      const totalUsers = await collUsers.countDocuments(myQuery)
+      const totalPages = Math.ceil(totalUsers/itemsLimit)
+      res.send({users, totalPages})
     })
     // > adb: get all meals from db
     app.get('/all-meals', async (req, res) => {
-      const meals = await collMeals.find().toArray()
-      res.send(meals)
+      // console.log('all-mel', req.query);
+      // const {currentPage, totalPages, itemsLimit} = req.query
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit // prevPage * limit
+
+      const meals = await collMeals.find({}, {skip:itemsSkip, limit: itemsLimit}).toArray()
+      const totalMeals = await collMeals.countDocuments()
+      const totalPages = Math.ceil(totalMeals/itemsLimit)
+
+      res.send( {meals, totalPages} )
     })
     // > adb: get all reviews from db
     app.get('/all-reviews', verifyUser, verifyAdmin, async (req, res) => {
@@ -232,13 +263,20 @@ async function main() {
         return res.status(403).send({message: 'forbidden access'})
       }
 
-      const reviews = await collReviews.find().toArray()
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit
+
+      const reviews = await collReviews.find({}, {limit:itemsLimit, skip:itemsSkip}).toArray()
+      const totalReviews = await collReviews.countDocuments()
+      const totalPages = Math.ceil(totalReviews/itemsLimit)
+
       // get meals based on review meal_id
       const mealIds = reviews.map(review => new ObjectId(review.meal_id))
       const mQuery = { _id: {$in: mealIds} }
       const mOptions = {projection: { title:1, likes:1, reviews_count:1} }
       const meals = await collMeals.find(mQuery, mOptions ).toArray()
-      res.send({reviews, meals})
+      res.send({reviews, meals, totalPages})
     })
     // > admin: all-requested-meals / serve meals
     app.get('/serve-meals', verifyUser, verifyAdmin, async (req, res) => {
@@ -246,6 +284,10 @@ async function main() {
         return res.status(403).send({message: 'forbidden access'})
       }
       const {email, username} = req.query;
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit
+
       const myQuery = {}
       if (email) {
         myQuery.email = {$regex: new RegExp(email, 'i') }
@@ -254,19 +296,27 @@ async function main() {
         myQuery.displayName = {$regex: new RegExp(username, 'i') }
       }
 
-      const reqMeals = await collRequestedMeals.find(myQuery).toArray()
+      const reqMeals = await collRequestedMeals.find(myQuery, {limit:itemsLimit, skip:itemsSkip}).toArray()
+      const totalReqMeals = await collRequestedMeals.countDocuments(myQuery)
+      const totalPages = Math.ceil(totalReqMeals/itemsLimit)
       // get meals (based on review's meal_id)
       const mealIds = reqMeals.map(reqMeal => new ObjectId(`${reqMeal.meal_id}`))
       const mealsQuery = { _id: { $in: mealIds } }
       const mealsOpt = { projection: { title: 1 } }
       const meals = await collMeals.find(mealsQuery, mealsOpt).toArray()
 
-      res.send({reqMeals, meals})
+      res.send({reqMeals, meals, totalPages})
     })
     // > admin: /all-upcoming-meals :: sorted by likes (descending)
     app.get('/all-upcoming-meals', async (req, res) => {
-      const upcomingMeals = await collUpcomingMeals.find({}, {sort: {likes:-1}}).toArray()
-      res.send(upcomingMeals)
+      const currentPage = parseInt(req.query.currentPage) || 1
+      const itemsLimit = parseInt(req.query.itemsLimit) || 10
+      const itemsSkip = (currentPage - 1) * itemsLimit
+
+      const upcomingMeals = await collUpcomingMeals.find({}, {sort: {likes:-1}, limit:itemsLimit, skip:itemsSkip}).toArray()
+      const totalUpcomingMeals = await collUpcomingMeals.countDocuments()
+      const totalPages = Math.ceil(totalUpcomingMeals/itemsLimit)
+      res.send({upcomingMeals, totalPages})
     })
     // > security: generate jwt token
     app.get('/generate-jwt', async (req, res) => {
