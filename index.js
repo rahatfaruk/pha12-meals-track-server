@@ -383,7 +383,7 @@ async function main() {
     
       res.send({clientSecret: paymentIntent.client_secret})
     })
-    // > user, admin: add-meal (upcomingMeals to meals collection)
+    // > user: add-meal (upcomingMeals to meals collection with existing _id)
     app.post('/add-meal', verifyUser, async (req, res) => {
       if (req.decoded.email !== req.query.email) {
         return res.status(403).send({message: 'forbidden access'})
@@ -394,6 +394,16 @@ async function main() {
       const result = await collMeals.insertOne(newMeal)
       res.send(result)
     })
+    // > admin: add-new-meal (brand new meal; without existing _id)
+    app.post('/add-new-meal', verifyUser, verifyAdmin, async (req, res) => {
+      if (req.decoded.email !== req.query.email) {
+        return res.status(403).send({message: 'forbidden access'})
+      }
+      const newMeal = req.body
+      const result = await collMeals.insertOne(newMeal)
+      res.send(result)
+    })
+    
     // > adb: add-upcoming-meal 
     app.post('/add-upcoming-meal', verifyUser, verifyAdmin, async (req, res) => {
       if (req.decoded.email !== req.query.email) {
