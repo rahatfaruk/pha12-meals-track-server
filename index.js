@@ -52,7 +52,7 @@ async function main() {
     const collLikes = database.collection('likes')
 
     // create meals index. set apiStrict: fasle before createing index 
-    await collMeals.createIndex({title: "text", category: "text", description: "text"})
+    // await collMeals.createIndex({title: "text", category: "text", description: "text"})
 
     async function verifyAdmin(req, res, next) {
       // access email from verifyUser (middleware)
