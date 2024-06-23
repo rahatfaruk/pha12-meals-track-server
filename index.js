@@ -9,7 +9,7 @@ const mongoUri = `mongodb+srv://${process.env.UserMDB}:${process.env.PasswordMDB
 const app = express()
 const port = process.env.PORT || 3000
 const client = new MongoClient(mongoUri, {
-  serverApi: { version: ServerApiVersion.v1, strict:true, deprecationErrors:true }
+  serverApi: { version: ServerApiVersion.v1, strict:false, deprecationErrors:true }
 })
 
 // middleware
@@ -51,6 +51,9 @@ async function main() {
     const collPayments = database.collection('payments')
     const collLikes = database.collection('likes')
 
+    // create meals index. set apiStrict: fasle before createing index 
+    await collMeals.createIndex({title: "text", category: "text", description: "text"})
+
     async function verifyAdmin(req, res, next) {
       // access email from verifyUser (middleware)
       const email = req.decoded.email 
@@ -84,8 +87,8 @@ async function main() {
 
       // update query by searchText 
       if(searchText) {
-        // modifiedQuery = { title: { $regex: new RegExp(searchText, 'gi') } }
-        modifiedQuery.title = { $regex: new RegExp(searchText, 'gi') }
+        // modifiedQuery.title = { $regex: new RegExp(searchText, 'gi') }
+        modifiedQuery['$text'] = { $search: searchText }
       }
       if (req.query.category) {
         modifiedQuery.category = req.query.category
